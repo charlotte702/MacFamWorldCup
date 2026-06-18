@@ -39,6 +39,7 @@ ALIASES = {
     "Bosnia-Herzegovina":       "Bosnia and Herzegovina",
     "Czechia":                  "Czech Republic",
 }
+
 def normalise(name):
     return ALIASES.get(name, name)
 
