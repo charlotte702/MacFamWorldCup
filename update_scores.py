@@ -27,14 +27,18 @@ PEOPLE = {
 
 ALIASES = {
     # API name → sweepstake name
-    "Korea Republic":       "South Korea",
-    "Côte d'Ivoire":        "Ivory Coast",
-    "Cote d'Ivoire":        "Ivory Coast",
-    "USA":                  "United States",
-    "IR Iran":              "Iran",
-    "Bosnia and Herzegovina":"Bosnia and Herzegovina",
+    "Korea Republic":           "South Korea",
+    "Côte d'Ivoire":            "Ivory Coast",
+    "Cote d'Ivoire":            "Ivory Coast",
+    "USA":                      "United States",
+    "IR Iran":                  "Iran",
+    "Cabo Verde":               "Cape Verde",
+    "DR Congo":                 "DR Congo",
+    "Congo DR":                 "DR Congo",
+    "Democratic Republic of Congo": "DR Congo",
+    "Bosnia-Herzegovina":       "Bosnia and Herzegovina",
+    "Czechia":                  "Czech Republic",
 }
-
 def normalise(name):
     return ALIASES.get(name, name)
 
