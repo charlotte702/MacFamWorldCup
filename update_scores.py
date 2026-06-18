@@ -1,43 +1,16 @@
- corner. I'll replace the whole file:
-
-
-Read a file
-Read a file
-Good — the alias IS there in GitHub. The problem must be something else. Let me add debug output to the script so we can see exactly what the API is calling Cape Verde, and also fix the drama to preserve the existing entries rather than wiping them.
-
-
-Created a file, read a file
-Created a file, read a file
-Download that file, then go to GitHub → click update_scores.py → pencil icon → select all → paste the new content → commit.
-
-Two key improvements in this version:
-
-Debug output — when the workflow runs, it'll print every team name the API uses, so we can see exactly what Cape Verde is called
-Drama preserved — it keeps your existing drama corner and only adds new hat-tricks/big wins on top
-After you commit it, go to Actions → run the workflow → click the run when it's done → open the "Fetch results" step and send me a screenshot of the logs. That'll show us exactly what the API calls Cape Verde and we can fix it once and for all.
-
-
-Update scores
-PY 
-
-
-
-
-Claude is AI and can make mistakes. Please double-check responses.
-Update scores · PY
 #!/usr/bin/env python3
 """
 World Cup 2026 Sweepstakes — auto-updater
 Fetches latest results from football-data.org and patches index.html FALLBACK block.
 Run by GitHub Actions on a schedule; commits the diff so Netlify redeploys automatically.
 """
- 
+
 import os, re, json, datetime, urllib.request, urllib.error
- 
+
 API_KEY  = os.environ["FD_API_KEY"]
 API_BASE = "https://api.football-data.org/v4"
 COMP_CODES = ["WC", "2000"]
- 
+
 # ── People & teams ─────────────────────────────────────────────────────────
 PEOPLE = {
     "Jace":     ["Haiti","Iraq","Austria","Senegal","Argentina"],
@@ -51,7 +24,7 @@ PEOPLE = {
     "Elaine":   ["Saudi Arabia","Uzbekistan","Egypt","United States","Brazil"],
     "David":    ["Cape Verde","Sweden","Australia","Japan","Germany"],
 }
- 
+
 # Broad alias map — API name (lowercase stripped) → sweepstake name
 ALIASES = {
     "korea republic":                   "South Korea",
@@ -81,13 +54,13 @@ ALIASES = {
     "south africa":                     "South Africa",
     "south korea":                      "South Korea",
 }
- 
+
 # All sweepstake team names (lowercased) for reverse lookup
 SWEEPSTAKE_TEAMS = {}
 for person, teams in PEOPLE.items():
     for t in teams:
         SWEEPSTAKE_TEAMS[t.lower()] = t
- 
+
 def normalise(name):
     """Convert any API team name to the sweepstake team name."""
     if not name:
@@ -101,13 +74,13 @@ def normalise(name):
         return SWEEPSTAKE_TEAMS[low]
     # Return original if no match
     return name
- 
+
 def api_fetch(path):
     url = f"{API_BASE}{path}"
     req = urllib.request.Request(url, headers={"X-Auth-Token": API_KEY})
     with urllib.request.urlopen(req, timeout=15) as r:
         return json.loads(r.read())
- 
+
 def load_matches():
     for code in COMP_CODES:
         try:
@@ -119,7 +92,7 @@ def load_matches():
         except Exception as e:
             print(f"Code {code} failed: {e}")
     raise RuntimeError("No match data from any competition code")
- 
+
 def load_scorers():
     for code in COMP_CODES:
         try:
@@ -131,38 +104,38 @@ def load_scorers():
         except Exception as e:
             print(f"Scorers code {code} failed: {e}")
     return []
- 
+
 def fmt_date(utc):
     try:
         dt = datetime.datetime.fromisoformat(utc.replace("Z", "+00:00"))
         return dt.strftime("%d %b").lstrip("0")
     except Exception:
         return ""
- 
+
 def build_scores(matches, scorers):
     team_pts    = {}
     team_notes  = {}
     team_played = set()
- 
+
     finished = [m for m in matches if m.get("status") == "FINISHED"]
     print(f"Finished matches: {len(finished)}")
- 
+
     for m in finished:
         ft = m.get("score", {}).get("fullTime", {})
         h_goals = ft.get("home")
         a_goals = ft.get("away")
         if h_goals is None or a_goals is None:
             continue
- 
+
         h_raw = m.get("homeTeam", {}).get("name", "")
         a_raw = m.get("awayTeam", {}).get("name", "")
         hn = normalise(h_raw)
         an = normalise(a_raw)
         date = fmt_date(m.get("utcDate", ""))
- 
+
         # Debug: print all teams to help spot name issues
         print(f"  {h_raw!r} -> {hn!r}  vs  {a_raw!r} -> {an!r}  ({h_goals}-{a_goals})")
- 
+
         if h_goals > a_goals:
             h_pts, a_pts = 3, 0
             note_h = f"{h_goals}-{a_goals} vs {an} ({date})"
@@ -175,25 +148,25 @@ def build_scores(matches, scorers):
             h_pts = a_pts = 1
             note_h = f"{h_goals}-{a_goals} draw vs {an} ({date})"
             note_a = f"{a_goals}-{h_goals} draw vs {hn} ({date})"
- 
+
         team_pts[hn]  = team_pts.get(hn, 0) + h_pts
         team_pts[an]  = team_pts.get(an, 0) + a_pts
         team_played.add(hn)
         team_played.add(an)
         team_notes[hn] = note_h
         team_notes[an] = note_a
- 
+
     # Ensure all sweepstake teams appear (0 if not yet played)
     for teams in PEOPLE.values():
         for t in teams:
             if t not in team_pts:
                 team_pts[t] = 0
- 
+
     print(f"\nTeam points summary:")
     for k, v in sorted(team_pts.items()):
         played = "played" if k in team_played else "not yet played"
         print(f"  {k}: {v}pts ({played})")
- 
+
     # Scorers
     scorer_list = []
     for s in scorers[:10]:
@@ -201,9 +174,9 @@ def build_scores(matches, scorers):
         team   = normalise(s.get("team", {}).get("name", ""))
         goals  = s.get("goals") or s.get("numberOfGoals") or 0
         scorer_list.append({"player": player, "team": team, "goals": goals})
- 
+
     return team_pts, team_notes, list(team_played), scorer_list
- 
+
 def extract_existing_drama(html_path):
     """Pull the existing drama array out of index.html so we preserve it."""
     try:
@@ -215,7 +188,7 @@ def extract_existing_drama(html_path):
     except Exception as e:
         print(f"Could not extract drama: {e}")
     return None
- 
+
 def build_new_drama_items(matches, scorers):
     """Generate drama items for notable NEW events (hat-tricks, 5+ margins)."""
     items = []
@@ -246,34 +219,34 @@ def build_new_drama_items(matches, scorers):
         llabel = f"{lown}'s {lose}" if lown else lose
         items.append({"type": "big", "text": f"{wlabel} {ws}-{ls} {llabel} ({date}) - what a hiding!"})
     return items
- 
+
 def render_drama_js(items):
     lines = []
     for d in items:
         te = d["text"].replace("'", "\\'")
         lines.append(f"    {{ type:'{d['type']}', text:'{te}' }}")
     return "  drama: [\n" + ",\n".join(lines) + "\n  ]"
- 
+
 def render_fallback_block(team_pts, team_notes, team_played, scorers, drama_js, last_updated):
     def esc(s): return str(s).replace("\\", "\\\\").replace("'", "\\'")
- 
+
     pts_lines = [f"    '{esc(k)}': {v}" for k, v in team_pts.items()]
     pts_js = "  teamPts: {\n" + ",\n".join(pts_lines) + "\n  }"
- 
+
     note_lines = [f"    '{esc(k)}': '{esc(v)}'" for k, v in team_notes.items()]
     notes_js = "  teamNotes: {\n" + ",\n".join(note_lines) + "\n  }"
- 
+
     played_items = ", ".join(f"'{esc(t)}'" for t in sorted(team_played))
     played_js = f"  teamPlayed: new Set([{played_items}])"
- 
+
     scorer_lines = [
         f"    {{ player:{{name:'{esc(s['player'])}'}}, team:{{name:'{esc(s['team'])}'}}, goals:{s['goals']} }}"
         for s in scorers
     ]
     scorers_js = "  scorers: [\n" + ",\n".join(scorer_lines) + "\n  ]"
- 
+
     lu_js = f"  lastUpdated: '{esc(last_updated)}'"
- 
+
     return (
         "// ════════════════════════════════════════════\n"
         "// HARDCODED FALLBACK — auto-updated by GitHub Actions\n"
@@ -289,35 +262,35 @@ def render_fallback_block(team_pts, team_notes, team_played, scorers, drama_js, 
         f"{drama_js},\n"
         "};"
     )
- 
+
 def patch_html(html_path, new_block):
     with open(html_path, "r", encoding="utf-8") as f:
         content = f.read()
- 
+
     pattern = r"// ═+\n// HARDCODED FALLBACK.*?// ═+\nconst FALLBACK = \{.*?\};"
     new_content, n = re.subn(pattern, new_block, content, flags=re.DOTALL)
     if n == 0:
         raise RuntimeError("Could not find FALLBACK block to replace")
     print(f"Patched FALLBACK block ({n} replacement)")
- 
+
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(new_content)
- 
+
 def main():
     html_path = os.path.join(os.path.dirname(__file__), "index.html")
- 
+
     print("Fetching matches...")
     matches = load_matches()
     print("Fetching scorers...")
     scorers = load_scorers()
- 
+
     print("\nBuilding scores...")
     team_pts, team_notes, team_played, scorer_list = build_scores(matches, scorers)
- 
+
     # Preserve existing drama + add any new notable items
     existing_drama_str = extract_existing_drama(html_path)
     new_items = build_new_drama_items(matches, scorers)
- 
+
     if existing_drama_str and new_items:
         # Inject new items at the top of existing drama array
         new_lines = render_drama_js(new_items)
@@ -327,16 +300,15 @@ def main():
         drama_js = existing_drama_str
     else:
         drama_js = render_drama_js(new_items)
- 
+
     today = datetime.datetime.utcnow().strftime("%d %B %Y").lstrip("0")
     last_updated = f"{today} — auto-updated by GitHub Actions"
- 
+
     block = render_fallback_block(team_pts, team_notes, team_played, scorer_list, drama_js, last_updated)
- 
+
     print("\nPatching index.html...")
     patch_html(html_path, block)
     print(f"Done — {last_updated}")
- 
+
 if __name__ == "__main__":
     main()
- 
