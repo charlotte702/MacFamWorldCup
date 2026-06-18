@@ -189,6 +189,22 @@ def extract_existing_drama(html_path):
         print(f"Could not extract drama: {e}")
     return None
 
+# Base drama — always shown, updated manually via Charlotte+Claude
+BASE_DRAMA = [
+    { "type": "big",   "text": "🎩 MESSI HAT-TRICK vs Algeria 3-0 (Jun 16) — equalled Klose's all-time record of 16 World Cup goals! Jace's Argentina are absolutely flying 🚀" },
+    { "type": "big",   "text": "💥 Germany 7-1 Curaçao (Jun 14) — Stuart M's Curaçao suffered the heaviest defeat of the tournament. David is quietly going to rob everyone 🦁" },
+    { "type": "big",   "text": "🔥 Sweden 5-1 Tunisia (Jun 14) — Fran's Tunisia absolutely demolished. David's Sweden also contributing. David is TOP of the leaderboard! 👀" },
+    { "type": "big",   "text": "⚡ England 4-2 Croatia (Jun 17) — Bellingham and Rashford bossed it. Fran's Croatia virtually eliminated already. Charlotte's looking dangerous 👑" },
+    { "type": "big",   "text": "🇳🇴 Norway 4-1 Iraq (Jun 16) — Haaland on the scoresheet, as if there was any doubt. Nikolai's Norway in fine form ⚡" },
+    { "type": "upset", "text": "😱 Portugal 1-1 DR Congo (Jun 17) — Ronaldo had a SHOCKER. Wissa's last-gasp equaliser for Stuart P's Congo silenced the stadium. Stuart M is sweating 😅" },
+    { "type": "upset", "text": "🟥🟥 South Africa 0-2 Mexico (Jun 11) — TWO red cards for Charlotte's South Africa. Her Mexico won but her SA went down to 9 men. Chaos!" },
+    { "type": "upset", "text": "🇪🇸 Spain 0-0 Cape Verde (Jun 15) — Spain completely toothless. Stuart P's Spain failing to break down David's Cape Verde. That's a point each!" },
+    { "type": "you",   "text": "🥝 New Zealand came back from 2-0 DOWN to draw 2-2 with Iran (Jun 14) — Charlotte's NZ showed massive heart. Brodie's Iran let the lead slip 😬" },
+    { "type": "you",   "text": "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland's first World Cup win since 1990! (Jun 13) — McGinn's goal beats Jace's Haiti. Brodie's Scotland very much alive 🎉" },
+    { "type": "you",   "text": "🇦🇹 Austria's first World Cup win in 36 YEARS (Jun 17) — 3-1 vs Jordan. A secret weapon for Jace who already has Messi's Argentina too 💪" },
+    { "type": "you",   "text": "🦘 Australia 2-0 Turkey (Jun 13) — comfortable win for David's Socceroos. David really does have the dream draw 🦁" },
+]
+
 def build_new_drama_items(matches, scorers):
     """Generate drama items for notable NEW events (hat-tricks, 5+ margins)."""
     items = []
@@ -287,19 +303,13 @@ def main():
     print("\nBuilding scores...")
     team_pts, team_notes, team_played, scorer_list = build_scores(matches, scorers)
 
-    # Preserve existing drama + add any new notable items
-    existing_drama_str = extract_existing_drama(html_path)
+    # Build drama: start with BASE_DRAMA, add new auto-generated items
     new_items = build_new_drama_items(matches, scorers)
-
-    if existing_drama_str and new_items:
-        # Inject new items at the top of existing drama array
-        new_lines = render_drama_js(new_items)
-        # Replace closing ] with new items + original content
-        drama_js = existing_drama_str  # keep as-is for now
-    elif existing_drama_str:
-        drama_js = existing_drama_str
-    else:
-        drama_js = render_drama_js(new_items)
+    # Deduplicate: skip new items whose text is already in BASE_DRAMA
+    base_texts = {d["text"][:40] for d in BASE_DRAMA}
+    extra = [d for d in new_items if d["text"][:40] not in base_texts]
+    all_drama = extra + BASE_DRAMA  # newest first, then base
+    drama_js = render_drama_js(all_drama)
 
     today = datetime.datetime.utcnow().strftime("%d %B %Y").lstrip("0")
     last_updated = f"{today} — auto-updated by GitHub Actions"
