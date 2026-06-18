@@ -139,7 +139,7 @@ def build_fallback(matches, scorers):
     for s in scorer_list:
         if s["goals"] >= 3:
             # Find who owns this team
-            owner = next((p for p, ts in PEOPLE.items() if normalise(t) == s["team"] for t in ts), "")
+            owner = next((p for p, ts in PEOPLE.items() for t in ts if normalise(t) == s["team"]), "")
             label = f"{owner}'s {s['team']}" if owner else s["team"]
             drama.append({
                 "type": "big",
